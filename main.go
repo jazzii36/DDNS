@@ -1,70 +1,101 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/alidns"
-	"io/ioutil"
 	"net/http"
+	"time"
 )
 
-// 获取当前的公网 IP 地址
+// IPApiResponse 用于解析 IP 服务的 JSON 响应
+type IPApiResponse struct {
+	Query string `json:"query"`
+}
+
+// 获取当前的公网IP地址
 func getCurrentIP() (string, error) {
-	resp, err := http.Get("baidu.com")
+	resp, err := http.Get("http://ip-api.com/json")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("获取公网 IP 失败: %v", err)
 	}
 	defer resp.Body.Close()
-	ip, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
+
+	var data IPApiResponse
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return "", fmt.Errorf("解析 IP 响应失败: %v", err)
 	}
-	return string(ip), nil
+
+	return data.Query, nil
+}
+
+// 获取阿里云DNS记录
+func getDNSRecord(domainName, accessKeyId, accessKeySecret string) ([]alidns.Record, error) {
+	client, err := alidns.NewClientWithAccessKey("cn-hangzhou", accessKeyId, accessKeySecret)
+	if err != nil {
+		return nil, fmt.Errorf("创建阿里云客户端失败: %v", err)
+	}
+	request := alidns.CreateDescribeDomainRecordsRequest()
+	request.Scheme = "https"
+	request.DomainName = domainName
+	response, err := client.DescribeDomainRecords(request)
+	if err != nil {
+		return nil, fmt.Errorf("获取阿里云 DNS 记录失败: %v", err)
+	}
+	return response.DomainRecords.Record, nil
 }
 
 // 更新阿里云 DNS 记录
 func updateDNSRecord(recordId, RR, Type, Value, accessKeyId, accessKeySecret string) error {
 	client, err := alidns.NewClientWithAccessKey("cn-hangzhou", accessKeyId, accessKeySecret)
 	if err != nil {
-		return err
+		return fmt.Errorf("创建阿里云客户端失败: %v", err)
 	}
 	request := alidns.CreateUpdateDomainRecordRequest()
 	request.Scheme = "https"
-
 	request.RecordId = recordId
 	request.RR = RR
 	request.Type = Type
 	request.Value = Value
 
-	response, err := client.UpdateDomainRecord(request)
+	_, err = client.UpdateDomainRecord(request)
 	if err != nil {
-		return err
+		return fmt.Errorf("更新阿里云 DNS 记录失败: %v", err)
 	}
-	fmt.Println(response)
 	return nil
 }
 
 func main() {
-	// 阿里云 Access Key ID 和 Access Key Secret
-	accessKeyId := "LTAI5tH4inc1a6ktzDQbwRZs"
-	accessKeySecret := "lTtcyAe3Z3sHLh5AApKfrmPEabE4IP"
+	accessKeyId := "你的ID"
+	accessKeySecret := "你的key"
+	domainName := "jazzii36.space"
 
-	// 阿里云 DNS 记录信息
-	recordId := "你的记录ID" // DNS记录的RecordId，页面中可以直接看
-	RR := "@"            // 主机记录，如 "www"，如果是根域名，则为 "@"
-	recordType := "A"    // 记录类型，A记录,其实就是IP的一个tag，4A表示IPV6
-
-	// 获取当前公网 IP
-	currentIP, err := getCurrentIP()
-	if err != nil {
-		fmt.Println("获取当前公网 IP 失败：", err)
-		return
+	for {
+		// 获取当前的公网 IP 地址
+		currentIP, err := getCurrentIP()
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			// 获取阿里云 DNS 记录
+			records, err := getDNSRecord(domainName, accessKeyId, accessKeySecret)
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				// 更新阿里云 DNS 记录
+				for _, record := range records {
+					if (record.RR == "www" || record.RR == "@") && record.Type == "A" && record.Value != currentIP {
+						fmt.Println("当前的公网 IP 地址与阿里云 DNS 记录不一致，开始更新")
+						err := updateDNSRecord(record.RecordId, record.RR, record.Type, currentIP, accessKeyId, accessKeySecret)
+						if err != nil {
+							fmt.Println(err)
+						} else {
+							fmt.Println("更新阿里云 DNS 记录成功")
+						}
+					}
+				}
+			}
+		}
+		// 循环间隔时间，例如 5 分钟
+		time.Sleep(5 * time.Minute)
 	}
-
-	// 更新DNS记录
-	err = updateDNSRecord(recordId, RR, recordType, currentIP, accessKeyId, accessKeySecret)
-	if err != nil {
-		fmt.Println("更新DNS记录失败：", err)
-		return
-	}
-	fmt.Println("更新DNS记录成功")
 }
