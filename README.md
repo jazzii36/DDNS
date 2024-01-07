@@ -1,6 +1,6 @@
 # newwifi3 D2 改pandavan 老毛子系统
 ## 前提：你已经成功刷入pandavan
-2. 刷breed
+1. 刷breed
 2. 刷入pandavan
 
 # 内网服务公网访问，搭建NAS，家庭物联网控制中心，博客等服务搭建方案
@@ -26,7 +26,7 @@
     essKeySecret := "你的acesss key"
     ainName := "你的域名"
    ```
-6. windows 环境下交叉编译： run ` $Env:GOOS = "linux"; $Env:GOARCH = "mipsle"; go build -o ddns main.go ` ，注意这里面有个坑，我们在SSH进路由器查询linux CPU架构 `uname -a` 返回的是`mips`,一度怀疑交叉编译器出了问题。
+6. windows 环境下交叉编译： run ` $Env:GOOS = "linux"; $Env:GOARCH = "mipsle"; go build -o ddns main.go ` ，注意这里面有个坑，我们在SSH进路由器查询linux CPU架构 `uname -a` 返回的是`mips`,（其实应该是mipsle）一度怀疑交叉编译器出了问题。
 7. 编译好后将二进制文件ddns copy到路由器的 `etc/storage`目录下，注意一定要是改目录，否则不会进行持久化，放在路由器的其它目录，路由器重启后会删除。 
 回到pandavan控制台，点击自定义设备，点击“在路由器启动后执行”,启动脚本中最后一行输入
       ```
