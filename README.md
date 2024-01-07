@@ -21,12 +21,14 @@
 3. 点击右上角用户名，进入access管理，创建一个访问阿里云openapi的access count
 4. 添加解析，指定IPV4，解析地址先随便填一个（后面可以测试程序有没有运行成功）
 5. dlownload该项目，修改main.go 文件中:
-   	```accessKeyId := "你的ID"
-	accessKeySecret := "你的key"
-	domainName := "你的域名"```
+    ```
+    accessKeyId := "你的acssess id"
+    essKeySecret := "你的acesss key"
+    ainName := "你的域名"
+   ```
 6. windows 环境下交叉编译： run ` $Env:GOOS = "linux"; $Env:GOARCH = "mipsle"; go build -o ddns main.go ` ，注意这里面有个坑，我们在SSH进路由器查询linux CPU架构 `uname -a` 返回的是`mips`,一度怀疑交叉编译器出了问题。
 7. 编译好后将二进制文件ddns copy到路由器的 `etc/storage`目录下，注意一定要是改目录，否则不会进行持久化，放在路由器的其它目录，路由器重启后会删除。 
-回到pandavan控制台，点击自定义设备，点击“在路由器启动后执行”,启动脚本中输入
+回到pandavan控制台，点击自定义设备，点击“在路由器启动后执行”,启动脚本中最后一行输入
       ```
       #启动DDNS
        /etc/storage/ddns &
